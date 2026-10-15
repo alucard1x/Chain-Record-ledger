@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash, result_badge with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{% set cs = chain_summary() %}
+<div class="page-head">
+  <h1>Dashboard <span class="sub">Live overview of the ledger, re-checked on every page load.</span></h1>
+  <div class="actions">
+    <form method="post" action="{{ url_for('verify_chain') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-outline" type="submit">{{ icon('shield') }} Verify chain</button>
+    </form>
+    <a class="btn btn-primary" href="{{ url_for('add_record') }}">{{ icon('plus') }} Add record</a>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="span-12">{% include "_kpis.html" %}</div>
+
+  {% include "_charts.html" %}
+
+  <section class="card span-8">
+    <div class="card-header">
+      <div><h2>Latest blocks</h2><p class="card-sub">Newest first</p></div>
+      <a class="btn btn-sm btn-outline" href="{{ url_for('ledger_view') }}">All blocks</a>
+    </div>
+    {% set rows = latest_blocks %}
+    {% include "_latest_table.html" %}
+  </section>
+
+  <section class="card span-4 spot-card">
+    <h2>Chain anchor</h2>
+    <p class="spot-value orange mono">{{ cs.tip|short(6, 4) }}</p>
+    <p class="card-sub">Chain tip · {{ cs.records }} records in chain · {{ cs.anchor.record_count if cs.anchor else '—' }} anchored</p>
+    {% if cs.anchor and cs.anchor.latest_hash == cs.tip %}
+      <p class="state ok"><span class="dot"></span>Matches anchor.json</p>
+    {% else %}
+      <p class="state bad"><span class="dot"></span>Does not match anchor.json</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('verify_chain') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-primary btn-block" type="submit">Verify chain</button>
+    </form>
+  </section>
+
+  <section class="card span-12">
+    <div class="card-header">
+      <div><h2>Latest verifications</h2><p class="card-sub">Every run is kept in the audit log</p></div>
+      <a class="btn btn-sm btn-outline" href="{{ url_for('audit') }}">Audit log</a>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Run</th><th>When</th><th>User</th><th>From</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody>
+        {% for a in latest_runs %}
+          <tr class="{{ 'row-bad' if a.result != 'VALID' }}">
+            <td class="muted">{{ a.id }}</td>
+            <td class="nowrap" title="{{ a.run_at }} UTC">{{ a.run_at|age }}</td>
+            <td>{{ a.username }}</td>
+            <td class="nowrap">{{ a.source }}</td>
+            <td>{{ result_badge(a.result) }}</td>
+            <td class="small muted">{{ a.details }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="muted">No verification runs yet. Use Verify chain above.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

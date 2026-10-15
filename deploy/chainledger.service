@@ -1,0 +1,21 @@
+# systemd unit for ChainLedger.
+# deploy/setup.sh copies this to /etc/systemd/system/chainledger.service and
+# replaces __APP_DIR__ and __APP_USER__ with the real folder and user.
+
+[Unit]
+Description=ChainLedger - tamper-proof academic records ledger (gunicorn)
+After=network.target
+
+[Service]
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+# SECRET_KEY lives here (created by setup.sh, readable only by root)
+EnvironmentFile=/etc/chainledger.env
+# gunicorn serves the Flask app on localhost only; nginx faces the internet.
+ExecStart=__APP_DIR__/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 --access-logfile - --error-logfile - app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash, status_badge, status_class, pager with context %}
+{% block title %}Blocks{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Blocks <span class="sub">{{ result.blocks|length }} blocks · status re-checked live on every page load</span></h1>
+  <div class="actions">
+    <a class="btn {{ 'btn-primary' if view == 'table' else 'btn-outline' }}" href="{{ url_for('ledger_view') }}">{{ icon('list') }} Table</a>
+    <a class="btn {{ 'btn-primary' if view == 'chain' else 'btn-outline' }}" href="{{ url_for('ledger_view', view='chain') }}">{{ icon('link') }} Chain view</a>
+    <a class="btn btn-outline" href="{{ url_for('add_record') }}">{{ icon('plus') }} Add</a>
+  </div>
+</div>
+
+{% if not result.ok %}
+  <div class="alert alert-error">{{ icon('x') }}<div><strong>This chain has {{ result.issues|length }} integrity problem{{ 's' if result.issues|length != 1 }}</strong>
+    <a href="{{ url_for('verify_chain') }}">Run Verify Chain</a> for the full report.</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="table-top">
+    <span class="muted">{% if view == 'table' %}Newest first. {% else %}Genesis first — follow the arrows. {% endif %}Hover any hash to see where else it appears.</span>
+    {{ pager(page, pages, {'view': view} if view == 'chain' else {}) }}
+  </div>
+
+  {% if view == 'table' %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Block</th><th>Age</th><th>Roll No</th><th>Student</th><th>Subject</th><th>Marks</th><th>Sem</th>
+        <th>Hash</th><th>Parent Hash</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+      {% for b in blocks %}{% set r = b.record %}
+        <tr class="{{ 'row-bad' if b.status == 'TAMPERED' else ('row-warn' if b.status == 'BROKEN LINK') }}">
+          <td><a href="{{ url_for('record_detail', record_id=r.id) }}">{{ r.id }}</a></td>
+          <td class="nowrap" title="{{ r.created_at }} UTC">{{ r.created_at|age }}</td>
+          {% if b.is_genesis %}
+            <td colspan="5"><span class="badge badge-gold">{{ icon('cube') }} Genesis block</span></td>
+          {% else %}
+            <td class="nowrap">{{ r.roll_no }}</td>
+            <td class="nowrap">{{ r.student_name }}</td>
+            <td>{{ r.subject }}</td>
+            <td><b>{{ r.marks }}</b></td>
+            <td>{{ r.semester }}</td>
+          {% endif %}
+          <td>{{ hash(r.hash, href=url_for('record_detail', record_id=r.id)) }}</td>
+          <td>{{ hash(r.prev_hash, href=url_for('record_detail', record_id=b.prev_id) if b.prev_id else None) }}</td>
+          <td>{{ status_badge(b.status) }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="10" class="muted">The ledger is empty.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="chain">
+    {% for b in blocks %}{% set r = b.record %}
+      {% if not (loop.first and page == 1) %}
+        <div class="link-arrow {{ 'bad' if not b.link_ok }}">
+          <span class="line"></span><span>{{ 'prev_hash matches' if b.link_ok else 'link broken' }}</span><span class="line"></span><span class="head"></span>
+        </div>
+      {% endif %}
+      <div class="cblock {{ 'genesis' if b.is_genesis else status_class(b.status) }}">
+        <div class="cblock-head">
+          <b><a href="{{ url_for('record_detail', record_id=r.id) }}">Block #{{ r.id }}</a>{% if b.is_genesis %} · Genesis{% endif %}</b>
+          <span>{{ status_badge(b.status) }}</span>
+        </div>
+        {% if not b.is_genesis %}
+        <div class="cblock-grid">
+          <div><span class="k">Student</span>{{ r.student_name }}</div>
+          <div><span class="k">Roll no</span>{{ r.roll_no }}</div>
+          <div><span class="k">Subject</span>{{ r.subject }}</div>
+          <div><span class="k">Marks · Sem</span><b>{{ r.marks }}</b> · {{ r.semester }}</div>
+        </div>
+        {% else %}
+        <p class="muted small" style="margin-bottom:.6rem;">Fixed starting point of the chain — its prev_hash is 64 zeros. Created {{ r.created_at|age }}.</p>
+        {% endif %}
+        <div class="cblock-hashes">
+          <div><span class="k">Prev hash</span>{{ hash(r.prev_hash) }}</div>
+          <div><span class="k">Hash</span>{{ hash(r.hash) }}</div>
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">The ledger is empty.</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if pages > 1 %}<div class="table-top" style="border-top:1px solid var(--border);border-bottom:0;justify-content:flex-end;">{{ pager(page, pages, {'view': view} if view == 'chain' else {}) }}</div>{% endif %}
+</div>
+{% endblock %}

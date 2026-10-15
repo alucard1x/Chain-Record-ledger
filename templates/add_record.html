@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash with context %}
+{% block title %}Add Record{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Add Record <span class="sub">creates a new block at the tip of the chain</span></h1></div>
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h2>{{ icon('plus') }} New student record</h2></div>
+    <div class="card-body">
+      <form method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="form-row">
+          <div class="field"><label for="roll_no">Roll number</label>
+            <input type="text" id="roll_no" name="roll_no" value="{{ form.roll_no }}" maxlength="100" placeholder="STU25-009" required></div>
+          <div class="field"><label for="student_name">Student name</label>
+            <input type="text" id="student_name" name="student_name" value="{{ form.student_name }}" maxlength="100" placeholder="Full name" required></div>
+        </div>
+        <div class="field"><label for="subject">Subject</label>
+          <input type="text" id="subject" name="subject" value="{{ form.subject }}" maxlength="100" placeholder="Cloud Computing" required></div>
+        <div class="form-row">
+          <div class="field"><label for="marks">Marks (0–100)</label>
+            <input type="number" id="marks" name="marks" value="{{ form.marks }}" min="0" max="100" step="1" required></div>
+          <div class="field"><label for="semester">Semester</label>
+            <select id="semester" name="semester" required>
+              <option value="">Select…</option>
+              {% for s in range(1, 9) %}<option value="{{ s }}" {{ 'selected' if form.semester == s|string }}>Semester {{ s }}</option>{% endfor %}
+            </select></div>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit">{{ icon('cube') }} Add record to chain</button>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2>What happens when you click Add</h2></div>
+    <div class="card-body">
+      <div class="steps">
+        <div class="step"><div><b>Verify first.</b> <span class="muted">The app refuses to append to a chain that fails verification, so tampering can't be hidden under a fresh anchor.</span></div></div>
+        <div class="step"><div><b>Link.</b> <span class="muted">The current tip becomes this block's parent hash:</span><div class="small mt">{{ hash(chain_summary().tip) }}</div></div></div>
+        <div class="step"><div><b>Hash.</b> <div class="codebox">SHA256(id | roll_no | student_name | subject | marks | semester | created_at | prev_hash)</div></div></div>
+        <div class="step"><div><b>Anchor.</b> <span class="muted">The block is saved and <code>instance/anchor.json</code> is updated with the new tip and record count.</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

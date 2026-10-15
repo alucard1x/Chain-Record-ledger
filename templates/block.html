@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash, status_badge, tip with context %}
+{% block title %}{{ 'Record #' ~ record_id if public else 'Block #' ~ record_id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ 'Record' if public else 'Block' }} <span class="sub">#{{ record_id }}</span></h1>
+  {% if block and not public %}
+  <div class="actions no-print">
+    {% if not block.is_genesis %}<a class="btn btn-outline" href="{{ public_url }}">{{ icon('external') }} Public page</a>{% endif %}
+    <a class="btn btn-outline" href="{{ url_for('ledger_view') }}">{{ icon('list') }} All blocks</a>
+  </div>
+  {% endif %}
+</div>
+
+{# ---------- Public verdict banner ---------- #}
+{% if public %}
+  {% if verdict == 'NOT_FOUND' %}
+    <div class="alert alert-error">{{ icon('x') }}<div><strong>Record #{{ record_id }} not found</strong>No student record with this ID exists in the ledger. It may be mistyped — or it may have been deleted.</div></div>
+  {% elif verdict == 'NOT_GENUINE' %}
+    <div class="alert alert-error">{{ icon('x') }}<div><strong>Not genuine — this record failed verification</strong>
+      {% if block.status == 'TAMPERED' %}The data stored for this record no longer matches its SHA-256 hash, so it has been altered.{% else %}This record is no longer correctly linked into the chain.{% endif %}
+      Please contact the institution that issued it.</div></div>
+  {% elif verdict == 'WARNING' %}
+    <div class="alert alert-warning">{{ icon('alert') }}<div><strong>Record intact, but the ledger has integrity warnings</strong>This record's own hash and link check out, but the ledger as a whole failed verification (for example, it no longer matches the published anchor). Treat this result with caution.</div></div>
+  {% elif verdict == 'GENUINE' %}
+    <div class="alert alert-success">{{ icon('check') }}<div><strong>Genuine record</strong>Its hash, its link to the previous block and the whole chain verify against the published anchor. Checked {{ result.checked_at|age }}.</div></div>
+  {% endif %}
+{% endif %}
+
+{% if block and not (public and block.is_genesis) %}
+{% set r = block.record %}
+<div class="tabs no-print" data-tabs role="tablist">
+  <button class="tab active" type="button" data-tab="overview" role="tab">Overview</button>
+  <button class="tab" type="button" data-tab="hash" role="tab">Hash Computation</button>
+  {% if not block.is_genesis %}<button class="tab" type="button" data-tab="qr" role="tab">QR Certificate</button>{% endif %}
+</div>
+
+{# ---------- Overview ---------- #}
+<div class="card" data-panel="overview">
+  <div class="detail">
+    <div class="drow">
+      <div class="dlabel">{{ tip('Position of this block in the chain') }} Block Height:</div>
+      <div class="dvalue"><b>{{ r.id }}</b>
+        <span class="nav-arrows">
+          {% if prev_id %}<a href="{{ block_url(prev_id) }}" title="Previous block">{{ icon('left') }}</a>{% else %}<span>{{ icon('left') }}</span>{% endif %}
+          {% if next_id %}<a href="{{ block_url(next_id) }}" title="Next block">{{ icon('right') }}</a>{% else %}<span>{{ icon('right') }}</span>{% endif %}
+        </span>
+      </div>
+    </div>
+    <div class="drow">
+      <div class="dlabel">{{ tip('Result of recomputing this block\'s hash and checking its link') }} Status:</div>
+      <div class="dvalue">{{ status_badge(block.status) }}</div>
+    </div>
+    <div class="drow">
+      <div class="dlabel">{{ tip('When the block was written (UTC). It is part of the hash.') }} Timestamp:</div>
+      <div class="dvalue">{{ icon('clock') }} {{ r.created_at|age }} <span class="muted">({{ r.created_at }} UTC)</span></div>
+    </div>
+    <hr class="dsep">
+    {% if block.is_genesis %}
+    <div class="drow"><div class="dlabel">{{ tip('The first block has no parent') }} Type:</div><div class="dvalue"><span class="badge badge-gold">{{ icon('cube') }} Genesis block</span> <span class="muted">— fixed starting point; its parent hash is 64 zeros.</span></div></div>
+    {% else %}
+    <div class="drow"><div class="dlabel">{{ tip('Student name as recorded') }} Student:</div><div class="dvalue"><b>{{ r.student_name }}</b></div></div>
+    <div class="drow"><div class="dlabel">{{ tip('Student roll number') }} Roll Number:</div><div class="dvalue">{{ r.roll_no }}</div></div>
+    <div class="drow"><div class="dlabel">{{ tip('Subject for these marks') }} Subject:</div><div class="dvalue">{{ r.subject }}</div></div>
+    <div class="drow"><div class="dlabel">{{ tip('Marks out of 100') }} Marks:</div><div class="dvalue"><span class="pill" style="font-size:.85rem;"><b>{{ r.marks }}</b> / 100</span></div></div>
+    <div class="drow"><div class="dlabel">{{ tip('Semester') }} Semester:</div><div class="dvalue">{{ r.semester }}</div></div>
+    {% endif %}
+    <hr class="dsep">
+    <div class="drow">
+      <div class="dlabel">{{ tip('SHA-256 of this block\'s fields plus its parent hash') }} Hash:</div>
+      <div class="dvalue">{{ hash(r.hash, full=True) }}</div>
+    </div>
+    <div class="drow">
+      <div class="dlabel">{{ tip('The hash of the previous block, stored inside this block') }} Parent Hash:</div>
+      <div class="dvalue">{{ hash(r.prev_hash, href=block_url(block.prev_id) if block.prev_id else None, full=True) }}</div>
+    </div>
+    {% if next_block %}
+    <div class="drow">
+      <div class="dlabel">{{ tip('The next block should store this block\'s hash as its parent hash') }} Referenced By:</div>
+      <div class="dvalue">
+        {% if block_url(next_block.record.id) %}<a href="{{ block_url(next_block.record.id) }}">Block #{{ next_block.record.id }}</a>{% else %}Block #{{ next_block.record.id }}{% endif %}
+        {% if next_block.record.prev_hash == r.hash %}<span class="muted">— its parent hash points here</span> <span class="badge badge-valid">{{ icon('link') }} linked</span>
+        {% else %}<span class="badge badge-broken">{{ icon('alert') }} does not point here</span>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <hr class="dsep">
+    <div class="drow">
+      <div class="dlabel">{{ tip('The three checks the verifier runs') }} Integrity Checks:</div>
+      <div class="dvalue checks">
+        {% if block.data_ok %}<span class="badge badge-valid">{{ icon('check') }} Hash recomputes</span>{% else %}<span class="badge badge-tampered">{{ icon('x') }} Hash mismatch</span>{% endif %}
+        {% if block.link_ok %}<span class="badge badge-valid">{{ icon('check') }} Linked to parent</span>{% else %}<span class="badge badge-broken">{{ icon('alert') }} Broken link</span>{% endif %}
+        {% if result.anchor_hash_ok and result.count_ok %}<span class="badge badge-valid">{{ icon('anchor') }} Chain matches anchor</span>{% else %}<span class="badge badge-tampered">{{ icon('anchor') }} Anchor mismatch</span>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- Hash computation ---------- #}
+<div class="card" data-panel="hash" hidden>
+  <div class="card-body">
+    <div class="steps">
+      <div class="step"><div><b>Join the fields with “|”</b> <span class="muted">— id | roll_no | student_name | subject | marks | semester | created_at | prev_hash</span>
+        <div class="codebox">{% for part in hash_input.split('|') %}{{ part }}{% if not loop.last %}<span class="sep">|</span>{% endif %}{% endfor %}</div></div></div>
+      <div class="step"><div><b>SHA-256 of that text</b> <span class="muted">— recomputed right now</span>
+        <div class="codebox">{{ block.recomputed_hash }}</div></div></div>
+      <div class="step"><div><b>Compare with the stored hash</b>
+        <div class="codebox">{{ r.hash }}</div>
+        <div style="margin-top:.5rem;">{% if block.data_ok %}<span class="badge badge-valid">{{ icon('check') }} Identical — data unchanged since it was written</span>{% else %}<span class="badge badge-tampered">{{ icon('x') }} Different — the data was changed after it was hashed</span>{% endif %}</div></div></div>
+      <div class="step"><div><b>Check the link</b> <span class="muted">— stored parent hash vs the previous block's hash</span>
+        <div class="codebox">{{ r.prev_hash }}</div>
+        <div class="codebox">{{ block.expected_prev }}</div>
+        <div style="margin-top:.5rem;">{% if block.link_ok %}<span class="badge badge-valid">{{ icon('link') }} Linked correctly</span>{% else %}<span class="badge badge-broken">{{ icon('alert') }} Broken link — a block before this one was removed or forged</span>{% endif %}</div></div></div>
+    </div>
+  </div>
+</div>
+
+{# ---------- QR certificate ---------- #}
+{% if not block.is_genesis %}
+<div class="card" data-panel="qr" hidden>
+  <div class="card-body qr-wrap">
+    <img src="{{ url_for('qr_code', record_id=r.id) }}" alt="QR code for record {{ r.id }}">
+    <div>
+      <h2 style="margin-bottom:.4rem;">Scan to verify this record</h2>
+      <p class="muted">Print this QR code on the marksheet. Anyone who scans it lands on the live public verification page for record #{{ r.id }} — no login needed.</p>
+      <div class="codebox" style="margin-bottom:1rem;"><a href="{{ public_url }}">{{ public_url }}</a></div>
+      <div class="actions" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a class="btn btn-primary" href="{{ url_for('qr_code', record_id=r.id) }}" download>{{ icon('download') }} Download QR</a>
+        <button class="btn btn-outline" type="button" onclick="window.print()">{{ icon('print') }} Print</button>
+        <button class="btn btn-outline copy" type="button" data-copy="{{ public_url }}">{{ icon('copy') }} Copy link</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if public %}
+<div class="card mt no-print">
+  <div class="card-body" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:space-between;">
+    <span class="muted">Check another record</span>
+    <form class="strip-search" style="display:flex;width:min(420px,100%);" action="{{ url_for('search') }}" method="get">
+      <input type="text" name="q" placeholder="Record ID or block hash" aria-label="Record ID or block hash">
+      <button type="submit" aria-label="Search">{{ icon('search') }}</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

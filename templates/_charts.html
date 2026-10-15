@@ -1,0 +1,43 @@
+{# Area chart of marks per block + donut of records per semester. Needs: stats #}
+{% set sems = stats.series|map(attribute='sem')|unique|sort|list %}
+<section class="card span-8 chart-card">
+  <div class="card-header">
+    <div>
+      <h2>Marks by block</h2>
+      <p class="card-sub">Latest {{ stats.series|length }} blocks · hover for details</p>
+    </div>
+    <div class="chips" role="group" aria-label="Filter by semester">
+      <button type="button" class="chip active" data-sem="all">All</button>
+      {% for s in sems %}<button type="button" class="chip" data-sem="{{ s }}">Sem {{ s }}</button>{% endfor %}
+    </div>
+  </div>
+  <div class="area-chart" data-series='{{ stats.series|tojson }}' role="img"
+       aria-label="Marks per block: {% for p in stats.series %}#{{ p.id }} {{ p.y }}{{ ', ' if not loop.last }}{% endfor %}">
+    {% if not stats.series %}<p class="empty">No records yet.</p>{% endif %}
+  </div>
+</section>
+
+<section class="card span-4 donut-card">
+  <div class="card-header"><div><h2>Records by semester</h2><p class="card-sub">Share of all records</p></div></div>
+  <div class="donut-wrap">
+    {% set ns = namespace(offset=0) %}
+    <svg class="donut" viewBox="0 0 42 42" role="img" aria-label="{% for m in stats.semesters %}{{ m.label }} {{ m.pct }}%{{ ', ' if not loop.last }}{% endfor %}">
+      <circle class="donut-track" cx="21" cy="21" r="15.915" />
+      {% for m in stats.semesters %}
+        {% set seg = m.count * 100 / ([stats.total, 1]|max) %}
+        <circle class="donut-seg s{{ loop.index }}" cx="21" cy="21" r="15.915"
+                stroke-dasharray="{{ '%.2f'|format([seg - 1.2, 0.1]|max) }} {{ '%.2f'|format(100 - ([seg - 1.2, 0.1]|max)) }}"
+                stroke-dashoffset="{{ '%.2f'|format(25 - ns.offset) }}"><title>{{ m.label }}: {{ m.count }} ({{ m.pct }}%)</title></circle>
+        {% set ns.offset = ns.offset + seg %}
+      {% endfor %}
+    </svg>
+    <div class="donut-center">
+      {% if stats.semesters %}<b>{{ stats.semesters[0].label|replace('Semester ', 'Sem ') }}</b><span>{{ stats.semesters[0].pct }}%</span>{% else %}<b>0</b><span>records</span>{% endif %}
+    </div>
+  </div>
+  <ul class="legend">
+    {% for m in stats.semesters %}
+      <li><span class="swatch s{{ loop.index }}"></span><span>{{ m.label }}</span><b>{{ m.count }}</b><span class="muted">{{ m.pct }}%</span></li>
+    {% endfor %}
+  </ul>
+</section>

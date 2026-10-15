@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, result_badge, pager with context %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Audit Log <span class="sub">every verification run — admin and public</span></h1>
+  <div class="actions">
+    <span class="badge badge-valid">{{ icon('check') }} {{ passed }} passed</span>
+    <span class="badge badge-tampered">{{ icon('x') }} {{ total - passed }} failed</span>
+  </div>
+</div>
+<div class="card">
+  <div class="table-top"><span class="muted">A total of {{ total }} verification run{{ 's' if total != 1 }} found</span>{{ pager(page, pages) }}</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Run</th><th>Age</th><th>User</th><th>Triggered From</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr class="{{ 'row-bad' if row.result != 'VALID' }}">
+          <td>{{ row.id }}</td>
+          <td class="nowrap" title="{{ row.run_at }} UTC">{{ row.run_at|age }}</td>
+          <td class="nowrap">{{ icon('user') }} {{ row.username }}</td>
+          <td class="nowrap"><span class="pill">{{ row.source }}</span></td>
+          <td>{{ result_badge(row.result) }}</td>
+          <td class="small">{% for part in row.details.split(' | ') %}<div>{{ part }}</div>{% endfor %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">No verification runs yet. <a href="{{ url_for('verify_chain') }}">Run one now</a>.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

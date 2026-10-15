@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash, status_badge with context %}
+{% block title %}Verify Chain{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Verify Chain <span class="sub">recompute every hash · check every link · compare with the anchor</span></h1>
+  <form method="post" class="actions">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primary btn-lg" type="submit">{{ icon('shield') }} Run full verification</button>
+  </form>
+</div>
+
+{% if not result %}
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:3rem 1rem;">
+      <div style="font-size:2.2rem;color:var(--link);">{{ icon('shield') }}</div>
+      <h2 style="margin:.6rem 0 .3rem;">Ready to audit {{ chain_summary().blocks }} blocks</h2>
+      <p class="muted">Each run is recorded in the <a href="{{ url_for('audit') }}">audit log</a> with the time, user and result.</p>
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-primary btn-lg" type="submit">Run full verification</button></form>
+    </div>
+  </div>
+{% else %}
+  {% if result.ok %}
+    <div class="alert alert-success">{{ icon('check') }}<div><strong>Chain intact — all checks passed</strong>{{ result.blocks|length }} blocks verified: every hash recomputes, every link matches, and the chain matches the external anchor. Checked {{ result.checked_at }} UTC.</div></div>
+  {% else %}
+    <div class="alert alert-error">{{ icon('x') }}<div><strong>Chain compromised — {{ result.issues|length }} problem{{ 's' if result.issues|length != 1 }} found</strong>
+      <ul>{% for i in result.issues %}<li>{{ i }}</li>{% endfor %}</ul></div></div>
+  {% endif %}
+
+  <div class="card stats mb">
+    <div class="col"><div class="stat"><span class="stat-icon">{{ icon('cube') }}</span><div><div class="stat-label">Blocks checked</div><div class="stat-value">{{ result.blocks|length }}</div></div></div></div>
+    <div class="col"><div class="stat"><span class="stat-icon" style="color:var(--success)">{{ icon('check') }}</span><div><div class="stat-label">Valid blocks</div><div class="stat-value">{{ result.valid_blocks }}</div></div></div></div>
+    <div class="col"><div class="stat"><span class="stat-icon" style="color:{{ 'var(--danger)' if result.bad_blocks else 'var(--muted)' }}">{{ icon('x') }}</span><div><div class="stat-label">Failed blocks</div><div class="stat-value">{{ result.bad_blocks }}</div></div></div></div>
+    <div class="col"><div class="stat"><span class="stat-icon" style="color:{{ 'var(--success)' if result.anchor_hash_ok and result.count_ok else 'var(--danger)' }}">{{ icon('anchor') }}</span><div><div class="stat-label">Anchor check</div><div class="stat-value">{{ 'Passed' if result.anchor_hash_ok and result.count_ok else 'Failed' }}</div></div></div></div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-header"><h2>{{ icon('anchor') }} External anchor comparison</h2><span class="muted small">instance/anchor.json — kept outside the database</span></div>
+    <div class="detail">
+      <div class="drow"><div class="dlabel">Final hash vs anchor:</div>
+        <div class="dvalue">
+          {% if result.anchor_hash_ok %}<span class="badge badge-valid">{{ icon('check') }} Match</span>{% else %}<span class="badge badge-tampered">{{ icon('x') }} Mismatch — chain rebuilt or altered</span>{% endif %}
+          <div class="mt small"><span class="k">Chain tip</span>{{ hash(result.chain_tip, full=True) }}</div>
+          <div class="mt small"><span class="k">Anchored hash</span>{{ hash(result.anchor.latest_hash if result.anchor else None, full=True) }}</div>
+        </div></div>
+      <hr class="dsep">
+      <div class="drow"><div class="dlabel">Record count vs anchor:</div>
+        <div class="dvalue">
+          {% if result.count_ok %}<span class="badge badge-valid">{{ icon('check') }} Match</span>{% else %}<span class="badge badge-tampered">{{ icon('x') }} Mismatch — record(s) deleted or inserted</span>{% endif %}
+          <span style="margin-left:.6rem;">In chain: <b>{{ result.record_count }}</b> · Anchored: <b>{{ result.anchor.record_count if result.anchor else '—' }}</b></span>
+        </div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Block-by-block result</h2><span class="muted small">{{ result.valid_blocks }} valid · {{ result.bad_blocks }} failed</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Block</th><th>Record</th><th>Stored Hash</th><th>Hash Check</th><th>Link Check</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for b in result.blocks %}{% set r = b.record %}
+          <tr class="{{ 'row-bad' if b.status == 'TAMPERED' else ('row-warn' if b.status == 'BROKEN LINK') }}">
+            <td><a href="{{ url_for('record_detail', record_id=r.id) }}">{{ r.id }}</a></td>
+            <td>{% if b.is_genesis %}<span class="badge badge-gold">Genesis</span>{% else %}{{ r.student_name }} <span class="muted">· {{ r.subject }} · {{ r.marks }}</span>{% endif %}</td>
+            <td>{{ hash(r.hash) }}</td>
+            <td class="nowrap">{% if b.data_ok %}<span style="color:var(--success)">{{ icon('check') }} recomputes</span>{% else %}<span style="color:var(--danger)" title="recomputed {{ b.recomputed_hash }}">{{ icon('x') }} got {{ b.recomputed_hash|short(8, 4) }}</span>{% endif %}</td>
+            <td class="nowrap">{% if b.link_ok %}<span style="color:var(--success)">{{ icon('check') }} matches parent</span>{% else %}<span style="color:var(--warn)" title="expected {{ b.expected_prev }}">{{ icon('alert') }} expected {{ b.expected_prev|short(8, 4) }}</span>{% endif %}</td>
+            <td>{{ status_badge(b.status) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

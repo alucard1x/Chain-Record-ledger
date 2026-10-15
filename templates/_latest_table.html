@@ -1,0 +1,40 @@
+{# Latest blocks table. Needs: rows, cs. Admins see names; the public sees subject only. #}
+{% from "_macros.html" import hash, status_badge with context %}
+<div class="table-wrap">
+  <table class="data">
+    <thead><tr>
+      <th>#</th>
+      <th>{{ 'Student' if g.user else 'Subject' }}</th>
+      <th class="num">{{ 'Marks' if g.user else 'Sem' }}</th>
+      <th>Hash</th>
+      <th>Status</th>
+      <th class="right">Action</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      {% set st = cs.status.get(r.id, 'VALID') %}
+      {% set u = block_url(r.id) %}
+      <tr class="{{ 'row-bad' if st == 'TAMPERED' else ('row-warn' if st == 'BROKEN LINK') }}">
+        <td class="muted">{{ r.id }}</td>
+        {% if r.id == 1 %}
+          <td colspan="2"><span class="badge badge-gold">Genesis block</span></td>
+        {% else %}
+          <td>
+            <span class="cell-main">{{ r.student_name if g.user else r.subject }}</span>
+            <span class="cell-sub">{{ r.subject if g.user else r.created_at|age }}</span>
+          </td>
+          <td class="num">{{ r.marks if g.user else r.semester }}</td>
+        {% endif %}
+        <td>{{ hash(r.hash, href=u, copy=False) }}</td>
+        <td>{{ status_badge(st) }}</td>
+        <td class="right nowrap">
+          {% if u %}<a class="btn btn-xs btn-primary" href="{{ u }}">View</a>{% endif %}
+          {% if r.id != 1 %}<a class="btn btn-xs btn-muted" href="{{ (u ~ '#qr') if u else '#' }}">QR</a>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">No records yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

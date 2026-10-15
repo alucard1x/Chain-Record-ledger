@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Admin Sign In{% endblock %}
+{% block content %}
+<div class="auth">
+  <div class="card">
+    <div class="card-body">
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in to add records and run full chain audits.</p>
+      <form method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="field"><label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" placeholder="admin" required autofocus></div>
+        <div class="field"><label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required></div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">{{ icon('user') }} Sign in</button>
+      </form>
+      <p class="hint" style="text-align:center;margin-top:1rem;">Default after setup: <code>admin</code> / <code>admin123</code> — change it after your first login.</p>
+    </div>
+    <a class="card-footer" style="text-transform:none;letter-spacing:0;font-weight:500;font-size:.84rem;" href="{{ url_for('public_verify') }}">Checking a marksheet? Verify a record — no login needed {{ icon('arrow') }}</a>
+  </div>
+</div>
+{% endblock %}

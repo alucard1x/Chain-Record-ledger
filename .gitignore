@@ -1,0 +1,23 @@
+# Runtime data - the database and the anchor must never be committed
+instance/*
+!instance/.gitkeep
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets and logs (never commit)
+.env
+*.env
+*.log

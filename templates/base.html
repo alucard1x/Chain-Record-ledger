@@ -1,0 +1,199 @@
+{% from "_macros.html" import icon with context %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ChainLedger{% endblock %} · ChainLedger</title>
+  <script>
+    /* Theme before first paint. Dark charcoal is the house look; light is opt-in. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("chainledger-theme"); } catch (e) {}
+      document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+    })();
+    /* Loading screen: shown on the first page of each visit (not on every click).
+       A safety timer removes it even if a script fails to load. */
+    (function () {
+      var root = document.documentElement, seen = false;
+      try { seen = sessionStorage.getItem("chainledger-booted") === "1"; } catch (e) {}
+      if (!seen) root.classList.add("booting");
+      setTimeout(function () { root.classList.remove("booting"); }, 7000);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- JetBrains Mono: the one typeface for the interface (falls back to the system monospace offline).
+       Alex Brush: the signature typeface shared across Aryan's projects. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231d1d1d'/%3E%3Cpath d='M8 13h6v6H8zM18 13h6v6h-6z' fill='none' stroke='%23ff8a1f' stroke-width='2'/%3E%3Cpath d='M14 16h4' stroke='%23ff8a1f' stroke-width='2'/%3E%3C/svg%3E">
+</head>
+<body>
+{% include "_icons.html" %}
+{% set ep = request.endpoint or '' %}
+{% set cs = chain_summary() %}
+
+<!-- ====================== Loading screen ====================== -->
+<div class="loader" id="loader" aria-hidden="true"
+     data-steps='{{ ["Loading ledger", "Recomputing " ~ cs.blocks ~ " hashes", "Checking anchor", ("Chain intact" if cs.ok else "Chain compromised")]|tojson }}'
+     data-ok="{{ 1 if cs.ok else 0 }}" data-tip="{{ cs.tip or '' }}">
+  <!-- ghost of the real layout: sidebar + top bar, so the page "fills in" behind it -->
+  <div class="loader-ghost">
+    <div class="ghost-side">
+      <span class="ghost ghost-logo"></span>
+      <span class="ghost ghost-card"></span>
+      <span class="ghost ghost-line"></span><span class="ghost ghost-line"></span><span class="ghost ghost-line"></span>
+      <span class="ghost ghost-line short"></span><span class="ghost ghost-line"></span>
+    </div>
+    <div class="ghost-main">
+      <span class="ghost ghost-search"></span>
+    </div>
+  </div>
+  <div class="loader-box">
+    <div class="loader-logo">
+      <span class="logo-mark">{{ icon('link') }}</span>
+      <span class="logo-word">CHAINLEDGER</span>
+      <span class="logo-chip">256</span>
+    </div>
+    <div class="loader-bar"><span class="loader-fill"></span></div>
+    <div class="loader-meta">
+      <span class="loader-step">Loading ledger</span>
+      <span class="loader-pct">0%</span>
+    </div>
+    <p class="loader-hash">0000000000000000000000000000000000000000000000000000000000000000</p>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- ====================== Sidebar ====================== -->
+  <input type="checkbox" id="side-toggle" class="side-toggle" aria-hidden="true">
+  <aside class="sidebar" aria-label="Sidebar">
+    <a class="logo" href="{{ url_for('index') }}">
+      <span class="logo-mark">{{ icon('link') }}</span>
+      <span class="logo-word">CHAINLEDGER</span>
+      <span class="logo-chip">256</span>
+    </a>
+
+    <section class="side-status" aria-label="Chain status">
+      <div class="side-row">
+        <span class="side-label">Chain status</span>
+        <span class="state {{ 'ok' if cs.ok else 'bad' }}"><span class="dot"></span>{{ 'Intact' if cs.ok else 'Compromised' }}</span>
+      </div>
+      <div class="side-row side-big">
+        <span>Total records</span>
+        <b class="orange">{{ cs.records }}</b>
+      </div>
+      <div class="side-row"><span>Blocks in chain</span><b>{{ cs.blocks }}</b></div>
+      <div class="side-row"><span>Anchor</span>
+        {% if cs.anchor and cs.anchor.latest_hash == cs.tip %}<b class="green">matches</b>{% else %}<b class="red">mismatch</b>{% endif %}</div>
+      <div class="side-row"><span>Last full check</span>
+        <b>{% if cs.last_run %}{{ cs.last_run.run_at|age }}{% else %}never{% endif %}</b></div>
+      <div class="side-actions">
+        {% if g.user %}
+          <form method="post" action="{{ url_for('verify_chain') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-green" type="submit">Verify</button>
+          </form>
+          <a class="btn btn-sm btn-red" href="{{ url_for('demo_tools') }}">Attack</a>
+        {% else %}
+          <a class="btn btn-sm btn-green" href="{{ url_for('public_verify') }}#verify">Verify</a>
+          <a class="btn btn-sm btn-outline" href="{{ url_for('login') }}">Admin</a>
+        {% endif %}
+      </div>
+    </section>
+
+    <nav class="side-nav" aria-label="Main">
+      <p class="side-label">Menu</p>
+      {% if g.user %}
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if ep == 'dashboard' }}">{{ icon('chart') }} Dashboard</a>
+        <a href="{{ url_for('ledger_view') }}" class="{{ 'active' if ep in ('ledger_view', 'record_detail') }}">{{ icon('cube') }} Blocks</a>
+        <a href="{{ url_for('verify_chain') }}" class="{{ 'active' if ep == 'verify_chain' }}">{{ icon('shield') }} Verify chain</a>
+        <a href="{{ url_for('audit') }}" class="{{ 'active' if ep == 'audit' }}">{{ icon('activity') }} Audit log</a>
+        <a href="{{ url_for('add_record') }}" class="{{ 'active' if ep == 'add_record' }}">{{ icon('plus') }} Add record</a>
+        <p class="side-label">Additional</p>
+        <a href="{{ url_for('demo_tools') }}" class="{{ 'active' if ep == 'demo_tools' }}">{{ icon('zap') }} Demo tools</a>
+        <a href="{{ url_for('public_verify') }}" class="{{ 'active' if ep in ('public_verify', 'public_verify_record') }}">{{ icon('external') }} Public explorer</a>
+        <a href="{{ url_for('change_password') }}" class="{{ 'active' if ep == 'change_password' }}">{{ icon('key') }} Password</a>
+      {% else %}
+        <a href="{{ url_for('public_verify') }}" class="{{ 'active' if ep == 'public_verify' }}">{{ icon('chart') }} Explorer</a>
+        <a href="{{ url_for('public_verify') }}#verify" class="{{ 'active' if ep in ('public_verify_record', 'search') }}">{{ icon('shield') }} Verify a record</a>
+        <a href="{{ url_for('public_verify') }}#how">{{ icon('help') }} How it works</a>
+        <p class="side-label">Additional</p>
+        <a href="{{ url_for('login') }}" class="{{ 'active' if ep == 'login' }}">{{ icon('user') }} Admin sign in</a>
+      {% endif %}
+    </nav>
+
+    <div class="side-foot">
+      {% if g.user %}
+        <form method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button type="submit" class="side-link">{{ icon('logout') }} Log out</button>
+        </form>
+      {% else %}
+        <span class="muted small">SHA-256 · AWS EC2</span>
+      {% endif %}
+    </div>
+  </aside>
+  <label for="side-toggle" class="side-scrim" aria-hidden="true"></label>
+
+  <!-- ====================== Main column ====================== -->
+  <div class="main-col">
+    <header class="topbar">
+      <label for="side-toggle" class="icon-btn menu-btn" aria-label="Open menu">{{ icon('menu') }}</label>
+      <form class="top-search" action="{{ url_for('search') }}" method="get" role="search">
+        {{ icon('search') }}
+        <input type="text" name="q" id="top-q" autocomplete="off" spellcheck="false"
+               placeholder="{{ 'Search record ID, hash, roll no, name' if g.user else 'Search record ID or block hash' }}" aria-label="Search">
+        <kbd>/</kbd>
+      </form>
+      <div class="top-right">
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch light or dark theme" title="Switch theme">
+          <span class="only-dark">{{ icon('sun') }}</span><span class="only-light">{{ icon('moon') }}</span>
+        </button>
+        {% if g.user %}
+          <a class="user-chip" href="{{ url_for('change_password') }}" title="Account">
+            <span class="avatar">{{ g.user.username[:1]|upper }}</span>
+            <span class="user-meta"><b>{{ g.user.username }}</b><span class="green">Administrator</span></span>
+          </a>
+        {% else %}
+          <a class="btn btn-sm btn-primary" href="{{ url_for('login') }}">Sign in</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="content">
+      {% if g.user and session.get('default_password') and ep != 'change_password' %}
+        <div class="alert alert-warning">{{ icon('alert') }}<div>You're still using the default password. <a href="{{ url_for('change_password') }}">Change it</a> before this goes on the cloud.</div></div>
+      {% endif %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          {% set c = category if category in ('success', 'error', 'info', 'warning') else 'info' %}
+          <div class="alert alert-{{ c }}">{{ icon({'success': 'check', 'error': 'x', 'warning': 'alert', 'info': 'info'}[c]) }}<div>{{ message }}</div></div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+      <div class="footer-base">
+        <!-- A signature, not a section heading. Same credit style as Aryan's other projects. -->
+        <p class="footer-signature" title="Made by Aryan Ayush">
+          <span class="footer-signature-text">aryan made it</span>
+          <span class="footer-signature-pixels" aria-hidden="true"></span>
+        </p>
+        <div class="footer-right">
+          <nav class="footer-links" aria-label="Footer">
+            <a href="{{ url_for('public_verify') }}#how">How it works</a>
+            <a href="{{ url_for('public_verify') }}#verify">Verify a record</a>
+            {% if not g.user %}<a href="{{ url_for('login') }}">Admin</a>{% endif %}
+          </nav>
+          <p class="footer-legal">© 2026 Aryan Ayush<br>ChainLedger</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

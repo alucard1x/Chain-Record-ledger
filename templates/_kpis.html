@@ -1,0 +1,24 @@
+{# Four headline cards. Needs: stats, cs #}
+{% from "_macros.html" import icon with context %}
+<div class="kpis">
+  <div class="card kpi">
+    <span class="kpi-label">{{ icon('cube') }} Total records</span>
+    <b class="kpi-value orange">{{ stats.total }}</b>
+    <span class="kpi-sub">+ 1 genesis block</span>
+  </div>
+  <div class="card kpi">
+    <span class="kpi-label">{{ icon('book') }} Subjects</span>
+    <b class="kpi-value">{{ stats.subjects }}</b>
+    <span class="kpi-sub">across {{ stats.semesters|length }} semester group{{ 's' if stats.semesters|length != 1 }}</span>
+  </div>
+  <div class="card kpi">
+    <span class="kpi-label">{{ icon('chart') }} Average marks</span>
+    <b class="kpi-value">{{ stats.avg_marks }}<small>/100</small></b>
+    <span class="kpi-sub">{% if stats.latest %}latest block #{{ stats.latest.id }}, {{ stats.latest.created_at|age }}{% else %}no records yet{% endif %}</span>
+  </div>
+  <div class="card kpi">
+    <span class="kpi-label">{{ icon('shield') }} Integrity</span>
+    <b class="kpi-value {{ 'green' if cs.ok else 'red' }}">{{ 'Intact' if cs.ok else 'Broken' }}</b>
+    <span class="kpi-sub">{% if cs.ok %}anchor matches · 0 issues{% else %}{{ cs.issues }} issue{{ 's' if cs.issues != 1 }} found{% endif %}</span>
+  </div>
+</div>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Demo Tools{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Demo Tools <span class="sub">simulate attacks by someone with direct database access</span></h1>
+  <form method="post" action="{{ url_for('verify_chain') }}" class="actions">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">{{ icon('shield') }} Run Verify Chain</button>
+  </form>
+</div>
+
+<div class="demo-note">{{ icon('alert') }} For demonstration only — these tools deliberately bypass the ledger and damage the data. Use “Reset demo” to restore a clean chain.</div>
+
+{% macro record_select(id) %}
+  <select id="{{ id }}" name="record_id" required>
+    <option value="">Choose a record…</option>
+    {% for r in records %}<option value="{{ r.id }}">#{{ r.id }} · {{ r.student_name }} · {{ r.subject }} ({{ r.marks }})</option>{% endfor %}
+  </select>
+{% endmacro %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h2>{{ icon('edit') }} 1 · Simulate tampering</h2><span class="badge badge-tampered">→ Tampered</span></div>
+    <div class="card-body">
+      <p class="muted">Changes a record's marks straight in the database. The stored hash is left untouched, so that block no longer matches its hash.</p>
+      <form method="post" action="{{ url_for('demo_tamper') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="field"><label for="t-rec">Record</label>{{ record_select('t-rec') }}</div>
+        <div class="inline-form">
+          <div class="field"><label for="t-marks">New marks</label><input type="number" id="t-marks" name="new_marks" min="0" max="100" value="99" required></div>
+          <button class="btn btn-danger" type="submit">Tamper marks</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{{ icon('refresh') }} 2 · Simulate hacker rebuild</h2><span class="badge badge-tampered">→ Anchor mismatch</span></div>
+    <div class="card-body">
+      <p class="muted">Changes marks <em>and</em> recomputes every hash so every block looks valid. Only the external anchor can catch this.</p>
+      <form method="post" action="{{ url_for('demo_rebuild') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="field"><label for="r-rec">Record</label>{{ record_select('r-rec') }}</div>
+        <div class="inline-form">
+          <div class="field"><label for="r-marks">New marks</label><input type="number" id="r-marks" name="new_marks" min="0" max="100" value="100" required></div>
+          <button class="btn btn-danger" type="submit">Tamper &amp; rebuild</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{{ icon('trash') }} 3 · Simulate deletion</h2><span class="badge badge-broken">→ Count mismatch</span></div>
+    <div class="card-body">
+      <p class="muted">Deletes a record directly from the database. The next block's parent hash now points at nothing (broken link) and the count no longer matches the anchor.</p>
+      <form method="post" action="{{ url_for('demo_delete') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="inline-form">
+          <div class="field"><label for="d-rec">Record</label>{{ record_select('d-rec') }}</div>
+          <button class="btn btn-danger" type="submit">Delete record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{{ icon('refresh') }} 4 · Reset demo</h2><span class="badge badge-valid">→ Clean chain</span></div>
+    <div class="card-body">
+      <p class="muted">Wipes the chain, the anchor and the audit log, then creates a fresh genesis block and 8 sample student records. Your admin login is kept.</p>
+      <form method="post" action="{{ url_for('demo_reset') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-gold" type="submit">Reset demo data</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, hash with context %}
+{% block title %}Verify academic records{% endblock %}
+{% block content %}
+{% set cs = chain_summary() %}
+<div class="page-head">
+  <h1>Explorer <span class="sub">Check any academic record against the tamper-evident ledger.</span></h1>
+</div>
+
+<div class="dash-grid">
+  <section class="card span-8 verify-card" id="verify">
+    <div class="card-header"><div><h2>Verify a record</h2><p class="card-sub">Enter the record ID printed on the marksheet, or the first 6+ characters of its block hash.</p></div></div>
+    <form class="verify-form" action="{{ url_for('search') }}" method="get">
+      <input type="text" name="q" autocomplete="off" spellcheck="false" required
+             placeholder="e.g. {{ stats.latest.id if stats.latest else 4 }}" aria-label="Record ID or block hash">
+      <button class="btn btn-primary" type="submit">{{ icon('shield') }} Verify</button>
+    </form>
+    <p class="card-sub verify-hint">{{ icon('qr') }} Scanning the QR code on a marksheet opens its record directly.</p>
+  </section>
+
+  <section class="card span-4 spot-card">
+    <h2>Ledger integrity</h2>
+    <p class="spot-value {{ 'green' if cs.ok else 'red' }}">{{ 'INTACT' if cs.ok else 'COMPROMISED' }}</p>
+    <p class="card-sub">{{ cs.blocks }} blocks checked live · anchor {{ 'matches' if cs.anchor and cs.anchor.latest_hash == cs.tip else 'mismatch' }}</p>
+    <a class="btn btn-primary btn-block" href="#how">How it works</a>
+  </section>
+
+  <div class="span-12">{% include "_kpis.html" %}</div>
+
+  {% include "_charts.html" %}
+
+  <section class="card span-8">
+    <div class="card-header"><div><h2>Latest blocks</h2><p class="card-sub">Student names stay private on the public explorer.</p></div></div>
+    {% set rows = latest_blocks %}
+    {% include "_latest_table.html" %}
+  </section>
+
+  <section class="card span-4" id="how">
+    <div class="card-header"><div><h2>How it works</h2><p class="card-sub">Four steps keep every record honest.</p></div></div>
+    <ol class="how">
+      <li><span class="how-icon">{{ icon('hash') }}</span><div><b>Every record is hashed</b><span>SHA-256 fingerprints roll no, name, subject, marks, semester, time and the previous hash.</span></div></li>
+      <li><span class="how-icon">{{ icon('link') }}</span><div><b>Blocks are chained</b><span>Each block stores the previous block's hash. Change one mark and the chain breaks there.</span></div></li>
+      <li><span class="how-icon">{{ icon('anchor') }}</span><div><b>The chain is anchored</b><span>The latest hash and count live outside the database, so a rebuilt chain is caught.</span></div></li>
+      <li><span class="how-icon">{{ icon('qr') }}</span><div><b>Anyone can check</b><span>Every marksheet's QR code opens its live verification page. No login needed.</span></div></li>
+    </ol>
+  </section>
+</div>
+{% endblock %}

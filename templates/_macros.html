@@ -1,0 +1,46 @@
+{# Reusable UI pieces. Import with:  {% from "_macros.html" import ... with context %} #}
+
+{% macro icon(name, cls='') -%}
+<svg class="i {{ cls }}" aria-hidden="true"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+
+{% macro status_badge(status) -%}
+  {%- if status == 'VALID' -%}<span class="badge badge-valid">{{ icon('check') }} Valid</span>
+  {%- elif status == 'TAMPERED' -%}<span class="badge badge-tampered">{{ icon('x') }} Tampered</span>
+  {%- else -%}<span class="badge badge-broken">{{ icon('alert') }} Broken link</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro result_badge(result) -%}
+  {%- if result == 'VALID' -%}<span class="badge badge-valid">{{ icon('check') }} Valid</span>
+  {%- else -%}<span class="badge badge-tampered">{{ icon('x') }} Compromised</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro status_class(status) -%}
+  {%- if status == 'TAMPERED' -%}tampered{%- elif status == 'BROKEN LINK' -%}broken{%- else -%}valid{%- endif -%}
+{%- endmacro %}
+
+{# A hash: monospace, highlight-on-hover (data-hash), optional link and copy button #}
+{% macro hash(value, href=None, full=False, copy=True) -%}
+  {%- if value -%}
+  <span class="{{ 'hash-full' if full else 'nowrap' }}"><span class="hash" data-hash="{{ value }}" title="{{ value }}">
+    {%- if href %}<a href="{{ href }}">{{ value if full else value|short }}</a>{% else %}{{ value if full else value|short }}{% endif -%}
+  </span>{% if copy %}<button type="button" class="copy" data-copy="{{ value }}" title="Copy">{{ icon('copy') }}</button>{% endif %}</span>
+  {%- else -%}<span class="muted">—</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro tip(text) -%}
+<span class="q" title="{{ text }}">{{ icon('help') }}</span>
+{%- endmacro %}
+
+{% macro pager(page, pages, args={}) -%}
+  {% if pages > 1 %}
+  <nav class="pager" aria-label="Pagination">
+    {% if page > 1 %}<a href="{{ url_for(request.endpoint, page=1, **args) }}">First</a><a href="{{ url_for(request.endpoint, page=page-1, **args) }}" aria-label="Previous">{{ icon('left') }}</a>
+    {% else %}<span class="off">First</span><span class="off">{{ icon('left') }}</span>{% endif %}
+    <span class="cur">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a href="{{ url_for(request.endpoint, page=page+1, **args) }}" aria-label="Next">{{ icon('right') }}</a><a href="{{ url_for(request.endpoint, page=pages, **args) }}">Last</a>
+    {% else %}<span class="off">{{ icon('right') }}</span><span class="off">Last</span>{% endif %}
+  </nav>
+  {% endif %}
+{%- endmacro %}
