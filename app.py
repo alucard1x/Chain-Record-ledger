@@ -660,4 +660,15 @@ if __name__ == "__main__":
     # On EC2, gunicorn imports `app` directly, so this block never runs there.
     # (Port 5050 because macOS uses 5000 for AirPlay.)
     port = int(os.environ.get("PORT", 5050))
+    url = f"http://127.0.0.1:{port}/"
+
+    # Open the site in the default browser once the server is up.
+    # Debug mode restarts the process to watch for code changes; WERKZEUG_RUN_MAIN
+    # is only set in that child, so the browser opens once, not on every reload.
+    # Set NO_BROWSER=1 to turn this off.
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true" and not os.environ.get("NO_BROWSER"):
+        import threading
+        import webbrowser
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+
     app.run(host="127.0.0.1", port=port, debug=True)

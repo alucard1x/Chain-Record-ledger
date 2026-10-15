@@ -25,7 +25,7 @@ python init_db.py
 python app.py
 ```
 
-Open **http://127.0.0.1:5050** and log in with `admin` / `admin123`. Full instructions for Windows, macOS and AWS EC2 are below.
+The site opens in your browser automatically at **http://127.0.0.1:5050**. Log in with `admin` / `admin123`. Full instructions for Windows, macOS and AWS EC2 are below.
 
 ## Contents
 
@@ -183,8 +183,9 @@ python init_db.py
 python app.py
 ```
 
-Then open **http://127.0.0.1:5050** and log in with `admin` / `admin123`.
+Your browser opens **http://127.0.0.1:5050** automatically. Log in with `admin` / `admin123`.
 
+- To start the server without opening a browser, run `NO_BROWSER=1 python app.py` (macOS) or `set NO_BROWSER=1` first (Windows).
 - Port **5050** is used because macOS uses port 5000 for AirPlay. To use another port, set the `PORT` variable, e.g. `set PORT=8080` on Windows or `PORT=8080 python app.py` on macOS.
 - `python app.py` runs in **debug mode**, for local use only. On EC2 the app runs under gunicorn with debug **off**.
 - **Next time** you only need to activate the venv (`venv\Scripts\activate` or `source venv/bin/activate`) and run `python app.py`.
