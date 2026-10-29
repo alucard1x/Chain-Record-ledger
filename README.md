@@ -6,7 +6,7 @@
 ![SHA-256](https://img.shields.io/badge/Hashing-SHA--256-ff8a1f)
 ![AWS EC2](https://img.shields.io/badge/Deploy-AWS%20EC2-FF9900?logo=amazonaws&logoColor=white)
 
-*Made by **Aryan Ayush***
+
 
 Student marks are stored as a **blockchain-style chain of SHA-256 hashes**. If anyone edits, rebuilds or deletes a record directly in the database, the **Verify Chain** page detects it and shows exactly where the chain breaks.
 
